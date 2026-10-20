@@ -67,16 +67,33 @@ def delete(table, **filters):
     return q.execute().data
 
 # Ensure room row exists
-try:
-    room = rows("rooms", code=room_code)
-    if not room:
-        upsert("rooms", {"code": room_code, "max_players": max_players, "current_question_id": None, "called_player_id": None, "status": "lobby"}, on_conflict="code")
-    else:
-        update("rooms", {"max_players": max_players}, code=room_code)
-except Exception as e:
-    st.error("Không đọc được bảng dữ liệu. Hãy chạy SQL trong README trên Supabase và kiểm tra quyền truy cập.")
-    st.code(str(e))
+
+def get_supabase():
+    try:
+        url = st.secrets["supabase"]["url"].strip()
+        key = st.secrets["supabase"]["key"].strip()
+
+        if not url.startswith("https://"):
+            raise ValueError("URL Supabase phải bắt đầu bằng https://")
+
+        if "/rest/v1" in url:
+            raise ValueError(
+                "URL không được có /rest/v1 ở cuối. "
+                "Hãy dùng URL gốc của dự án."
+            )
+
+        return create_client(url, key)
+
+    except Exception as e:
+        st.error(f"Lỗi kết nối Supabase: {type(e).__name__}: {e}")
+        return None
+
+
+sb = get_supabase()
+
+if not sb:
     st.stop()
+
 
 st.markdown(f'<div class="panel">🌐 <b>MÃ PHÒNG:</b> {room_code}　　👥 <b>GIỚI HẠN:</b> {max_players} người</div>', unsafe_allow_html=True)
 st.write("")
